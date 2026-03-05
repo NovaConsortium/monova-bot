@@ -21,7 +21,7 @@ Learn more at [novaconsortium.org](https://novaconsortium.org).
 
 Don't want to self-host? Invite the bot directly to your server:
 
-[**Add Nova Monad Bot to your server**](https://discord.com/oauth2/authorize?client_id=1477388399404122162&permissions=2048&integration_type=0&scope=bot+applications.commands)
+[**Add Monova Monad Bot to your server**](https://discord.com/oauth2/authorize?client_id=1477388399404122162&permissions=2048&integration_type=0&scope=bot+applications.commands)
 
 ## Self-Hosting
 

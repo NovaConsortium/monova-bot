@@ -1,4 +1,4 @@
-# Monad Bot
+# Monova Bot
 
 A Discord bot that tracks Monad validators and sends real-time notifications when they produce leader slots. Built by [Nova Consortium](https://novaconsortium.org).
 

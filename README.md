@@ -34,8 +34,8 @@ Don't want to self-host? Invite the bot directly to your server:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/monad-bot.git
-cd monad-bot
+git clone https://github.com/your-username/monova-bot.git
+cd monova-bot
 ```
 
 ### 2. Install dependencies

@@ -2,3 +2,5 @@
 bot.log
 CLAUDE.md
 /slotsData
+node_modules
+.env

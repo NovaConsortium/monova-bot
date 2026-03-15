@@ -5,6 +5,7 @@ import path from "path";
 import { TrackedValidator } from "../db/models/TrackedValidator";
 import { handleSlotEvent, SlotEvent, sendSkipAlert, SkipEvent } from "./notification";
 import { formatNodeId, fetchAllValidators } from "../utils/validator";
+import { uploadToGitHub } from "./github-upload";
 
 const SSE_URL = "https://proxy-mn.gmonads.com/sse";
 const SLOTS_DATA_DIR = path.join(process.cwd(), "slotsData");
@@ -34,10 +35,18 @@ function archiveEvent(parsed: any): void {
   if (epoch === null) return;
 
   if (epoch !== currentEpoch) {
-    // Close previous stream if open
-    if (currentWriteStream) {
-      currentWriteStream.end();
-      console.log(`📦 Closed archive for epoch ${currentEpoch}`);
+    // Close previous stream and upload to GitHub
+    if (currentWriteStream && currentEpoch !== null) {
+      const closedEpoch = currentEpoch;
+      currentWriteStream.end(() => {
+        const filePath = path.join(SLOTS_DATA_DIR, `slots-${closedEpoch}.jsonl`);
+        console.log(`📦 Closed archive for epoch ${closedEpoch}, uploading to GitHub...`);
+        uploadToGitHub(filePath).then((result) => {
+          if (!result.success) {
+            console.error(`❌ GitHub upload failed for epoch ${closedEpoch}: ${result.error}`);
+          }
+        });
+      });
     }
 
     currentEpoch = epoch;

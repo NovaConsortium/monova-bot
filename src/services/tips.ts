@@ -1,4 +1,4 @@
-const MONAD_RPC = "https://rpc.monad.xyz";
+const MONAD_RPC = process.env.MONAD_RPC_URL || "https://rpc.monad.xyz";
 
 interface TipsResult {
   totalTipsMon: number;

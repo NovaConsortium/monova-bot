@@ -5,7 +5,9 @@ import path from "path";
 import { TrackedValidator } from "../db/models/TrackedValidator";
 import { handleSlotEvent, SlotEvent, sendSkipAlert, SkipEvent } from "./notification";
 import { formatNodeId, fetchAllValidators } from "../utils/validator";
+import { getBlockTips } from "./tips";
 import { uploadToGitHub } from "./github-upload";
+import { recordBlock, recordSkip, sendEpochSummaries, updateEpochUserMap } from "./epoch-summary";
 
 const SSE_URL = "https://proxy-mn.gmonads.com/sse";
 const SLOTS_DATA_DIR = path.join(process.cwd(), "slotsData");
@@ -13,6 +15,7 @@ const SLOTS_DATA_DIR = path.join(process.cwd(), "slotsData");
 // Slot archive state
 let currentEpoch: string | null = null;
 let currentWriteStream: fs.WriteStream | null = null;
+let discordClient: Client | null = null;
 
 function ensureSlotsDir(): void {
   if (!fs.existsSync(SLOTS_DATA_DIR)) {
@@ -30,9 +33,25 @@ function getEpochFromEvent(parsed: any): string | null {
   return null;
 }
 
-function archiveEvent(parsed: any): void {
+async function archiveEvent(parsed: any): Promise<void> {
   const epoch = getEpochFromEvent(parsed);
   if (epoch === null) return;
+
+  // Enrich finalized blocks with priority fee data
+  if (parsed.type === "finalized_block" && parsed.payload?.block_num != null) {
+    const blockNum = typeof parsed.payload.block_num === "string"
+      ? parseInt(parsed.payload.block_num)
+      : parsed.payload.block_num;
+    try {
+      const tips = await getBlockTips(blockNum);
+      if (tips) {
+        parsed.payload.priority_fees_mon = tips.totalTipsMon;
+        parsed.payload.tx_count = tips.txCount;
+      }
+    } catch {
+      // Don't block archiving if tip fetch fails
+    }
+  }
 
   if (epoch !== currentEpoch) {
     // Close previous stream and upload to GitHub
@@ -46,6 +65,10 @@ function archiveEvent(parsed: any): void {
             console.error(`❌ GitHub upload failed for epoch ${closedEpoch}: ${result.error}`);
           }
         });
+        // Send epoch summary DMs
+        if (discordClient) {
+          sendEpochSummaries(discordClient, closedEpoch);
+        }
       });
     }
 
@@ -95,6 +118,7 @@ export async function refreshTrackedCache(): Promise<void> {
   }
 
   trackedMap = newMap;
+  updateEpochUserMap(newMap);
   console.log(`📋 Tracking ${all.length} validator-channel pairs (${newMap.size} unique validators)`);
   for (const [nodeId, trackers] of newMap) {
     console.log(`   → ${trackers[0]!.validatorName || "unnamed"} (${formatNodeId(nodeId)}) in ${trackers.length} channel(s)`);
@@ -118,6 +142,11 @@ function processSSEMessage(client: Client, data: string): void {
     if (!trackers || trackers.length === 0) return;
 
     const name = trackers[0]!.validatorName || formatNodeId(author);
+    const blockNumParsed = typeof block_num === "string" ? parseInt(block_num) : block_num;
+    recordBlock(
+      String(epoch), author, blockNumParsed,
+      trackers[0]!.validatorName, trackers[0]!.validatorLogo, trackers[0]!.commission
+    );
     console.log(`🎰 TRACKED HIT: ${name} produced block #${block_num} (round ${round}, epoch ${epoch})`);
     console.log(`   Dispatching to ${trackers.length} channel(s)`);
 
@@ -144,6 +173,11 @@ function processSSEMessage(client: Client, data: string): void {
 
     const trackers = trackedMap.get(AuthorNodeID);
     if (!trackers || trackers.length === 0) return;
+
+    recordSkip(
+      String(Epoch), AuthorNodeID,
+      trackers[0]!.validatorName, trackers[0]!.validatorLogo, trackers[0]!.commission
+    );
 
     const notifiedUsers = new Set<string>();
     for (const tracker of trackers) {

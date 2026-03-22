@@ -13,7 +13,7 @@ interface UploadResult {
  * Uploads a file to a GitHub repository using the Contents API.
  * Requires GITHUB_SLOTS_TOKEN and GITHUB_SLOTS_REPO env vars.
  */
-export async function uploadToGitHub(filePath: string): Promise<UploadResult> {
+export async function uploadToGitHub(filePath: string, folder: string = "slotsData"): Promise<UploadResult> {
   const token = process.env.GITHUB_SLOTS_TOKEN;
   const repo = process.env.GITHUB_SLOTS_REPO; // e.g. "owner/repo"
   const branch = process.env.GITHUB_SLOTS_BRANCH || "main";
@@ -23,7 +23,7 @@ export async function uploadToGitHub(filePath: string): Promise<UploadResult> {
   }
 
   const fileName = path.basename(filePath);
-  const epochMatch = fileName.match(/slots-(\d+)\.jsonl/);
+  const epochMatch = fileName.match(/(?:slots|validators)-(\d+)\.jsonl/);
   const RANGE_SIZE = 50;
   let rangeFolder = "unknown";
   if (epochMatch) {
@@ -32,7 +32,7 @@ export async function uploadToGitHub(filePath: string): Promise<UploadResult> {
     const rangeEnd = rangeStart + RANGE_SIZE - 1;
     rangeFolder = `${rangeStart}-${rangeEnd}`;
   }
-  const repoPath = `slotsData/${rangeFolder}/${fileName}`;
+  const repoPath = `${folder}/${rangeFolder}/${fileName}`;
   const url = `${GITHUB_API}/repos/${repo}/contents/${repoPath}`;
 
   try {

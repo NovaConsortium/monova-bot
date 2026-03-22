@@ -1,7 +1,12 @@
 import { Client, EmbedBuilder } from "discord.js";
+import fs from "fs";
+import path from "path";
 import { getMonPrice } from "./price";
 import { getBlockTips } from "./tips";
 import { formatNodeId } from "../utils/validator";
+import { uploadToGitHub } from "./github-upload";
+
+const VALIDATOR_DATA_DIR = path.join(process.cwd(), "validatorData");
 
 const INFLATION_PER_SLOT = 25;
 const MONAD_PURPLE = 0x836EF9;
@@ -80,12 +85,60 @@ export function recordSkip(
   stats.skips++;
 }
 
+function ensureValidatorDir(): void {
+  if (!fs.existsSync(VALIDATOR_DATA_DIR)) {
+    fs.mkdirSync(VALIDATOR_DATA_DIR, { recursive: true });
+  }
+}
+
+export async function writeValidatorLog(epoch: string): Promise<void> {
+  const validators = epochStats.get(epoch);
+  if (!validators || validators.size === 0) return;
+
+  ensureValidatorDir();
+  const filePath = path.join(VALIDATOR_DATA_DIR, `validators-${epoch}.jsonl`);
+
+  const lines: string[] = [];
+  for (const [, stats] of validators) {
+    const totalSlots = stats.blocks.length + stats.skips;
+    const successRate = totalSlots > 0
+      ? ((stats.blocks.length / totalSlots) * 100).toFixed(2)
+      : "0.00";
+
+    const entry = {
+      epoch,
+      nodeId: stats.nodeId,
+      validatorName: stats.validatorName,
+      commission: stats.commission,
+      totalSlots,
+      successful: stats.blocks.length,
+      timeouts: stats.skips,
+      successRate: `${successRate}%`,
+      blocks: stats.blocks.sort((a, b) => a - b),
+      timestamp: Date.now(),
+    };
+    lines.push(JSON.stringify(entry));
+  }
+
+  fs.writeFileSync(filePath, lines.join("\n") + "\n");
+  console.log(`📊 Wrote validator log for epoch ${epoch} (${validators.size} validators) to ${filePath}`);
+
+  // Upload to GitHub
+  const result = await uploadToGitHub(filePath, "validatorData");
+  if (!result.success) {
+    console.error(`❌ GitHub upload failed for validator log epoch ${epoch}: ${result.error}`);
+  }
+}
+
 export async function sendEpochSummaries(
   client: Client,
   epoch: string
 ): Promise<void> {
   const validators = epochStats.get(epoch);
   if (!validators) return;
+
+  // Write validator log before sending summaries
+  await writeValidatorLog(epoch);
 
   const monPrice = await getMonPrice();
 

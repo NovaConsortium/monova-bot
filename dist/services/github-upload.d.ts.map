@@ -1,0 +1,1 @@
+{"version":3,"file":"github-upload.d.ts","sourceRoot":"","sources":["../../src/services/github-upload.ts"],"names":[],"mappings":"AAKA,UAAU,YAAY;IACpB,OAAO,EAAE,OAAO,CAAC;IACjB,GAAG,CAAC,EAAE,MAAM,GAAG,SAAS,CAAC;IACzB,KAAK,CAAC,EAAE,MAAM,GAAG,SAAS,CAAC;CAC5B;AAED;;;GAGG;AACH,wBAAsB,cAAc,CAAC,QAAQ,EAAE,MAAM,EAAE,MAAM,GAAE,MAAoB,GAAG,OAAO,CAAC,YAAY,CAAC,CAuE1G"}

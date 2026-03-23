@@ -42,6 +42,7 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const connection_1 = require("./db/connection");
 const sse_listener_1 = require("./services/sse-listener");
+const api_server_1 = require("./services/api-server");
 dotenv_1.default.config();
 const client = new discord_js_1.Client({
     intents: [
@@ -122,6 +123,8 @@ client.once(discord_js_1.Events.ClientReady, async (c) => {
     catch (error) {
         console.error("❌ Failed to deploy commands:", error);
     }
+    // Start API server
+    (0, api_server_1.startAPIServer)();
     // Load tracked validators into memory and start SSE
     await (0, sse_listener_1.refreshTrackedCache)();
     (0, sse_listener_1.startSSEListener)(client);

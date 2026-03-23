@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { connectDB } from "./db/connection";
 import { startSSEListener, refreshTrackedCache } from "./services/sse-listener";
+import { startAPIServer } from "./services/api-server";
 
 dotenv.config();
 
@@ -95,6 +96,9 @@ client.once(Events.ClientReady, async (c) => {
   } catch (error) {
     console.error("❌ Failed to deploy commands:", error);
   }
+
+  // Start API server
+  startAPIServer();
 
   // Load tracked validators into memory and start SSE
   await refreshTrackedCache();
